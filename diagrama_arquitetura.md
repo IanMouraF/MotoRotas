@@ -1,7 +1,7 @@
 Diagrama de Arquitetura - Sistema MotoRotas (Fluxo Automatizado)
 Este diagrama ilustra a arquitetura com a lógica de agrupamento e atribuição de rotas totalmente automatizada pelo sistema.
 
-```
+```mermaid
 graph TD
     subgraph "Fontes Externas"
         iFood_API["API do iFood"]
