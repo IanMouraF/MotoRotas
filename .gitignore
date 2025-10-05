@@ -1,0 +1,14 @@
+Ambiente Virtual
+venv/
+.venv/
+
+Arquivos de Cache do Python
+pycache/
+*.pyc
+
+Arquivos de Ambiente (Credenciais Secretas)
+.env
+
+Arquivos de configuração de IDEs
+.vscode/
+.idea/
