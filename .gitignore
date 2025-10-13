@@ -145,4 +145,5 @@ pytype static analyzer
 Cython debug symbols
 cython_debug/
 
-NO
+NOVO: Ignorar o arquivo do banco de dados SQLite
+motorotas.db
