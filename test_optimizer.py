@@ -1,91 +1,75 @@
-from routing.optimizer import optimize_route
-import urllib.parse
+import os
+import sys
 
-def create_google_maps_link(origin_coords, ordered_deliveries):
-    """
-    Cria um link do Google Maps com a rota otimizada a partir de coordenadas.
-    """
-    base_url = "https://www.google.com/maps/dir/"
+# Adiciona o diretório raiz do projeto ao sys.path para resolver os imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from routing.optimizer import find_best_route_for_order, reorder_route, create_google_maps_link
+
+# --- CONFIGURAÇÕES ---
+RESTAURANT_COORDS = {"lat": -3.783871, "lon": -38.500820}
+
+# --- DADOS DE ENTRADA (SIMULAÇÃO DE PEDIDOS CHEGANDO UM A UM) ---
+INCOMING_ORDERS = [
+    # Rota Sul
+    {"id": "Pedido_A_Sul", "coords": {"lat": -3.805, "lon": -38.505}},
+    {"id": "Pedido_B_Sul_Distante", "coords": {"lat": -3.830, "lon": -38.510}},
     
-    # Formata a string da origem
-    origin_point = f"{origin_coords['lat']},{origin_coords['lon']}"
+    # Rota Norte
+    {"id": "Pedido_C_Norte", "coords": {"lat": -3.760, "lon": -38.495}},
     
-    # Formata a string das paradas
-    delivery_points = [f"{d['lat']},{d['lon']}" for d in ordered_deliveries]
+    # Pedido Sul que se encaixa na primeira rota
+    {"id": "Pedido_D_Sul_Intermediario", "coords": {"lat": -3.815, "lon": -38.508}},
     
-    # Junta todos os pontos em uma única string, separados por "/"
-    full_path = "/".join([origin_point] + delivery_points)
-    
-    return base_url + full_path
+    # Pedido muito a Leste, que não deve se encaixar em nenhuma
+    {"id": "Pedido_E_Leste_Isolado", "coords": {"lat": -3.790, "lon": -38.460}},
+]
 
-def run_test():
-    """
-    Executa um teste do algoritmo de otimização com dados manuais.
-    """
-
-    # --- DADOS DE ENTRADA (VOCÊ PODE MUDAR AQUI) ---
-
-    # Coordenadas do Restaurante (Ex: Bairro de Fátima, Fortaleza)
-    restaurant_coords = {"lat": -3.7533, "lon": -38.5144}
-
-    # Lista de entregas de exemplo com coordenadas em direções opostas
-    
-   #  {"id": "pedidoigreja", "lat": , "lon":  },
-    sample_deliveries = [
-        # Rota Sul
-        { "id": "pedido_A_SUL_PERTO", "lat": -3.7658, "lon": -38.5120 }, # Perto (Aeroporto)
-        { "id": "pedido_B_SUL_LONGE", "lat": -3.8345, "lon": -38.5029 }, # Longe (Messejana)
-
-        # Rota Leste
-        { "id": "pedido_C_LESTE_PERTO", "lat": -3.7448, "lon": -38.4900 }, # Perto (Cocó)
-        { "id": "pedido_D_LESTE_LONGE", "lat": -3.7330, "lon": -38.4688 }, # Longe (Praia do Futuro)
-        
-        # Outro pedido na rota Leste para testar ordenação
-        { "id": "pedido_E_LESTE_MEDIO", "lat": -3.7399, "lon": -38.4811 }, # Meio do caminho
-
-        { "id": "pedido_TESTE", "lat": -3.796013, "lon": -38.505376 },
-        {"id": "pedidoigreja", "lat": -3.796612939599661, "lon": -38.500149932026964 }, 
-
-        {"id": "pedido_oeste_a", "lat": -3.7535693002164736, "lon": -38.53752621432585 },
-       
-        
-
-        {"id": "pedido_norte_a", "lat": -3.7235924885333795, "lon": -38.51787098827868 },
-         
-    ]
-
-    # --- EXECUÇÃO DO ALGORITMO ---
-    
-    print("="*50)
-    print("INICIANDO TESTE DO ALGORITMO DE ROTA (CORREDORES)")
-    print("="*50)
-    
-    # Chama a função de otimização
-    list_of_routes = optimize_route(restaurant_coords, sample_deliveries)
-
-    print("\n" + "="*50)
-    print("RESULTADO FINAL: ROTAS GERADAS")
-    print("="*50)
-
-    if not list_of_routes:
-        print("Nenhuma rota foi gerada.")
-        return
-
-    # Itera sobre cada rota criada e exibe as informações
-    for i, route in enumerate(list_of_routes):
-        print(f"\n--- ROTA {i + 1} ---")
-        print("  Ordem de entrega:")
-        for j, delivery in enumerate(route):
-            print(f"    {j+1}º: Pedido {delivery['id']}")
-        
-        # Gera e exibe o link do Google Maps para esta rota específica
-        maps_link = create_google_maps_link(restaurant_coords, route)
-        print("\n  Link da Rota no Google Maps:")
-        print(f"  {maps_link}")
-    
-    print("\n" + "="*50)
-
-
+# --- SIMULAÇÃO DO PROCESSO ---
 if __name__ == "__main__":
-    run_test()
+    
+    # Começamos sem nenhuma rota criada
+    final_routes = []
+
+    print("--- Iniciando Simulação de Recebimento de Pedidos ---\n")
+
+    # Processa cada pedido que "chega"
+    for new_order in INCOMING_ORDERS:
+        print(f"-> Chegou um novo pedido: {new_order['id']}")
+        
+        # O algoritmo tenta encontrar uma rota existente para o novo pedido
+        best_route_found = find_best_route_for_order(
+            new_order, final_routes, RESTAURANT_COORDS
+        )
+        
+        if best_route_found:
+            # Se encontrou uma rota, adiciona o pedido a ela
+            print(f"   Decisão: Adicionando à Rota existente #{best_route_found['id']}\n")
+            best_route_found['orders'].append(new_order)
+            # Reordena a rota com o novo pedido
+            best_route_found['orders'] = reorder_route(best_route_found['orders'], RESTAURANT_COORDS)
+        else:
+            # Se não encontrou, cria uma nova rota
+            new_route_id = len(final_routes) + 1
+            print(f"   Decisão: Nenhuma rota compatível. Criando nova Rota #{new_route_id}\n")
+            final_routes.append({
+                "id": new_route_id,
+                "orders": [new_order]
+            })
+
+    # --- EXIBIÇÃO DO RESULTADO FINAL ---
+    print("\n--- Resultado Final da Otimização ---")
+    
+    if not final_routes:
+        print("Nenhuma rota foi criada.")
+    else:
+        for route in final_routes:
+            # Recalcula o link do Google Maps com a composição final
+            gmaps_link = create_google_maps_link(RESTAURANT_COORDS, route['orders'])
+            
+            print(f"\n-> Rota #{route['id']}")
+            print("   Pedidos (em ordem de entrega):")
+            for order in route['orders']:
+                print(f"     - {order['id']}")
+            print(f"   Link de Navegação: {gmaps_link}")
 
