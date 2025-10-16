@@ -1,0 +1,60 @@
+services:
+  # 1. O Banco de Dados PostgreSQL
+  - name: motorotas-db
+    type: psql
+    plan: free # Usa o plano gratuito do Render para o banco de dados
+    psqlVersion: 14
+
+  # 2. A API Web (api.py)
+  - name: motorotas-api
+    type: web
+    plan: free # Usa o plano gratuito para o serviço web
+    env: python
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn api:app"
+    envVars:
+      - key: DATABASE_URL
+        fromService:
+          type: psql
+          name: motorotas-db
+          property: connectionString
+      - key: IFOOD_CLIENT_ID
+        sync: false # Você vai preencher isso manualmente no dashboard do Render
+      - key: IFOOD_CLIENT_SECRET
+        sync: false # Você vai preencher isso manualmente no dashboard do Render
+
+  # 3. O Coletor de Pedidos (main.py)
+  - name: motorotas-collector
+    type: worker # "Worker" é um script que roda em loop no fundo
+    plan: free
+    env: python
+    buildCommand: "./build.sh"
+    startCommand: "python main.py"
+    envVars:
+      - key: DATABASE_URL
+        fromService:
+          type: psql
+          name: motorotas-db
+          property: connectionString
+      - key: IFOOD_CLIENT_ID
+        sync: false
+      - key: IFOOD_CLIENT_SECRET
+        sync: false
+
+  # 4. O Processador de Rotas (process_routes.py)
+  - name: motorotas-processor
+    type: worker
+    plan: free
+    env: python
+    buildCommand: "./build.sh"
+    startCommand: "python process_routes.py"
+    envVars:
+      - key: DATABASE_URL
+        fromService:
+          type: psql
+          name: motorotas-db
+          property: connectionString
+      - key: IFOOD_CLIENT_ID # Otimizador pode precisar de chaves no futuro
+        sync: false
+      - key: IFOOD_CLIENT_SECRET
+        sync: false

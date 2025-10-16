@@ -1,3 +1,6 @@
 requests
 python-dotenv
 numpy
+Flask
+gunicorn
+psycopg2-binary
