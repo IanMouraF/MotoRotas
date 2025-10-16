@@ -21,17 +21,3 @@ services:
         sync: false
       - key: IFOOD_CLIENT_SECRET
         sync: false
-```
-
-### O Que Fazer Agora (Passo a Passo)
-
-1.  **Limpeza:** Delete os arquivos `api.py`, `main.py`, e `process_routes.py` do seu projeto.
-2.  **Criação:** Crie os novos arquivos `app.py`, `collector.py`, e `processor.py` e cole o conteúdo correspondente.
-3.  **Atualização:** Substitua o conteúdo do seu `render.yaml` pelo novo código simplificado.
-4.  **Commit e Push:** Envie todas essas alterações para a sua branch `api-test` no GitHub.
-    ```bash
-    git add .
-    git commit -m "refactor: Unifica aplicação para deploy no Render"
-    git push
-    
-
