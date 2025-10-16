@@ -1,10 +1,9 @@
-services:
+databases:
   # 1. O Banco de Dados PostgreSQL
   - name: motorotas-db
-    type: psql
     plan: free # Usa o plano gratuito do Render para o banco de dados
-    psqlVersion: 14
 
+services:
   # 2. A API Web (api.py)
   - name: motorotas-api
     type: web
@@ -14,8 +13,7 @@ services:
     startCommand: "gunicorn api:app"
     envVars:
       - key: DATABASE_URL
-        fromService:
-          type: psql
+        fromDatabase:
           name: motorotas-db
           property: connectionString
       - key: IFOOD_CLIENT_ID
@@ -32,8 +30,7 @@ services:
     startCommand: "python main.py"
     envVars:
       - key: DATABASE_URL
-        fromService:
-          type: psql
+        fromDatabase:
           name: motorotas-db
           property: connectionString
       - key: IFOOD_CLIENT_ID
@@ -50,8 +47,7 @@ services:
     startCommand: "python process_routes.py"
     envVars:
       - key: DATABASE_URL
-        fromService:
-          type: psql
+        fromDatabase:
           name: motorotas-db
           property: connectionString
       - key: IFOOD_CLIENT_ID # Otimizador pode precisar de chaves no futuro
