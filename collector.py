@@ -1,17 +1,13 @@
-# Este arquivo é o nosso antigo main.py, refatorado para ser um módulo.
-
 import os
 import time
 from dotenv import load_dotenv
 import requests
 import sys
 
-# Adiciona o diretório raiz ao sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from database.manager import save_new_order
 
-# Carrega as variáveis de ambiente do arquivo .env
 load_dotenv()
 
 # --- Configurações da API ---

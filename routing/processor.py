@@ -1,10 +1,8 @@
-# Este arquivo é o nosso antigo process_routes.py, refatorado para ser um módulo.
-
 import os
 import sys
 import time
 
-# Adiciona o diretório raiz ao sys.path
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from database.manager import get_pending_orders, get_created_routes, create_new_route, update_route

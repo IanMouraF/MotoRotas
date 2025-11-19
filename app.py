@@ -3,14 +3,12 @@ import sys
 import threading
 from flask import Flask, jsonify
 
-# Adiciona o diretório raiz ao sys.path para que possamos encontrar nossos módulos
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from database.manager import get_all_created_routes
 from collector import start_collector_loop
 from routing.processor import start_processor_loop
 
-# Inicializa a aplicação Flask
 app = Flask(__name__)
 
 # --- ENDPOINTS DA API ---
@@ -28,7 +26,6 @@ def get_routes():
 
 if __name__ != '__main__':
     # Este bloco só é executado quando o Gunicorn (servidor de produção) inicia a app.
-    # Ele não executa quando rodamos 'python app.py' localmente.
     
     print("Iniciando serviços de fundo (Coletor e Processador)...")
     
