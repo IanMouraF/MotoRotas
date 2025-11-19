@@ -2,12 +2,12 @@ import pytest
 import os
 import sys
 import sqlite3
-import database.manager
+import app.database.manager
 
 # Adiciona o diretório raiz do projeto ao sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from database.manager import save_new_order, get_pending_orders, setup_database
+from app.database.manager import save_new_order, get_pending_orders, setup_database
 
 @pytest.fixture(scope='function')
 def db_test_file(tmp_path, monkeypatch):
@@ -29,7 +29,7 @@ def db_test_file(tmp_path, monkeypatch):
         return conn
 
     # 4. Substitui a função get_db_connection original pela nossa mock
-    monkeypatch.setattr(database.manager, 'get_db_connection', mock_get_db_connection)
+    monkeypatch.setattr(app.database.manager, 'get_db_connection', mock_get_db_connection)
 
     # 5. Inicializa o banco (cria tabelas no arquivo temporário)
     # Como fizemos o patch da função get_db_connection, o setup_database usará nosso banco de teste

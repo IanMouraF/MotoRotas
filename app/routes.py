@@ -6,7 +6,7 @@ from flask import Flask, jsonify
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from database.manager import get_all_created_routes
-from collector import start_collector_loop
+from app.collector import start_collector_loop
 from routing.processor import start_processor_loop
 
 app = Flask(__name__)

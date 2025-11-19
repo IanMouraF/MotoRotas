@@ -7,7 +7,7 @@ import math
 # Adiciona o diretório raiz do projeto ao sys.path para que possamos importar o manager
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from database.manager import save_new_order
+from app.database.manager import save_new_order
 
 # Coordenadas do restaurante como base para a geração aleatória
 RESTAURANT_COORDS = {"lat": -3.783871639912979, "lon": -38.50082092785248}
