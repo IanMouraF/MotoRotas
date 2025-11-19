@@ -87,10 +87,10 @@ O sistema irá:
 
 ## 🧪 Testes Automatizados
 
-O projeto utiliza `pytest` para garantir a qualidade do código. Para rodar os testes com um relatório visual detalhado:
+O projeto utiliza `pytest` para garantir a qualidade do código. Para rodar os testes:
 
 ```bash
-python -m pytest --pspec
+python -m pytest
 ```
 
 -----
