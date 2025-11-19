@@ -1,4 +1,3 @@
-````markdown
 # 🛵 MotoRotas - Otimizador de Rotas iFood
 
 Este repositório contém uma **Prova de Conceito (PoC)** de um sistema backend em Python que se conecta à API do iFood, coleta pedidos em tempo real e utiliza algoritmos de otimização geográfica para agrupar entregas em rotas inteligentes.
