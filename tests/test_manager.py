@@ -2,10 +2,11 @@ import pytest
 import os
 import sys
 import sqlite3
-import app.database.manager
 
 # Adiciona o diretório raiz do projeto ao sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+import app.database.manager
 
 from app.database.manager import save_new_order, get_pending_orders, setup_database
 

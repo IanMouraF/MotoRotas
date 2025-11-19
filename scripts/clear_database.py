@@ -2,11 +2,11 @@ import sqlite3
 import os
 import sys
 
-# Adiciona o diretório raiz do projeto ao sys.path para garantir que o DB_PATH seja encontrado
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Define o caminho do banco de dados na raiz do projeto
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'motorotas.db')
+sys.path.append(PROJECT_ROOT)
+
+DB_PATH = os.path.join(PROJECT_ROOT, 'motorotas.db')
 
 def clear_routes_and_reset_orders():
     """

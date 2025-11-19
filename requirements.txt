@@ -1,6 +1,14 @@
+# --- Core do Servidor Web ---
+Flask
+gunicorn
+
+# --- Conexão com Banco de Dados ---
+psycopg2-binary
+
+# --- Utilitários e Lógica ---
 requests
 python-dotenv
 numpy
-Flask
-gunicorn
-psycopg2-binary
+
+# --- Testes Automatizados ---
+pytest
