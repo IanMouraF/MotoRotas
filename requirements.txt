@@ -12,3 +12,4 @@ numpy
 
 # --- Testes Automatizados ---
 pytest
+pytest-pspec
