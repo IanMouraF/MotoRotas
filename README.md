@@ -119,3 +119,10 @@ Para testar o sistema localmente sem precisar de pedidos reais do iFood, utilize
     ```bash
     python -m scripts.clear_database
     ```
+
+## 🐳 Rodando com Docker
+
+Para rodar a aplicação isolada em containers:
+
+```bash
+docker compose up --build

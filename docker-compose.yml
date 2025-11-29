@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  motorotas-app:
+    build: .
+    container_name: motorotas_container
+    ports:
+      - "5000:5000"
+    volumes:
+
+      - .:/app
+    environment:
+
+      - IFOOD_CLIENT_ID=${IFOOD_CLIENT_ID}
+      - IFOOD_CLIENT_SECRET=${IFOOD_CLIENT_SECRET}
+
+      - DATABASE_URL=
