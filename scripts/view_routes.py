@@ -5,7 +5,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Importa a função para buscar as rotas do banco de dados
-from database.manager import get_all_created_routes
+from app.database.manager import get_all_created_routes
 
 if __name__ == "__main__":
     print("Buscando todas as rotas salvas no banco de dados...")

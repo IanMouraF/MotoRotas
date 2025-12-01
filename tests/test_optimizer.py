@@ -4,7 +4,7 @@ import sys
 # Adiciona o diretório raiz do projeto ao sys.path para resolver os imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from routing.optimizer import find_best_route_for_order, reorder_route, create_google_maps_link
+from app.routing.optimizer import find_best_route_for_order, reorder_route, create_google_maps_link
 
 # --- CONFIGURAÇÕES ---
 RESTAURANT_COORDS = {"lat": -3.783871, "lon": -38.500820}
