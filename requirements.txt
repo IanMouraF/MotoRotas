@@ -1,5 +1,6 @@
 # --- Core do Servidor Web ---
 Flask
+flask-cors
 gunicorn
 
 # --- Conexão com Banco de Dados ---

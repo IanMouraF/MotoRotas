@@ -26,18 +26,17 @@ def get_db_connection():
         return conn
 
 def setup_database():
-    """Cria as tabelas do banco de dados se elas não existirem, com sintaxe compatível."""
-    # ... (código da função setup_database continua igual) ...
+    """Cria as tabelas e atualiza estrutura se necessário."""
     print("Verificando e configurando o banco de dados...")
     conn = get_db_connection()
     cursor = conn.cursor()
     
     is_postgres = isinstance(conn, psycopg2.extensions.connection)
     
-    # Sintaxe de autoincremento varia entre SQLite e PostgreSQL
     autoincrement_syntax = "SERIAL PRIMARY KEY" if is_postgres else "INTEGER PRIMARY KEY AUTOINCREMENT"
     text_syntax = "VARCHAR(255)" if is_postgres else "TEXT"
     
+    # 1. Tabelas Básicas
     cursor.execute(f'''
     CREATE TABLE IF NOT EXISTS orders (
         id {text_syntax} PRIMARY KEY,
@@ -47,11 +46,14 @@ def setup_database():
     )
     ''')
     
+    # Adicionamos motoboy_id na tabela routes
     cursor.execute(f'''
     CREATE TABLE IF NOT EXISTS routes (
         id {autoincrement_syntax},
         google_maps_link TEXT,
-        status {text_syntax} NOT NULL DEFAULT 'created'
+        status {text_syntax} NOT NULL DEFAULT 'created',
+        motoboy_id INTEGER, 
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     ''')
     
@@ -66,19 +68,32 @@ def setup_database():
     )
     ''')
     
-    # NOVA TABELA: Tabela para guardar os motoboys
     cursor.execute(f'''
     CREATE TABLE IF NOT EXISTS motoboys (
         id {autoincrement_syntax},
         name {text_syntax} NOT NULL,
+        phone {text_syntax},
         status {text_syntax} NOT NULL DEFAULT 'unavailable'
     )
     ''')
 
+    # --- MIGRAÇÃO MANUAL (GAMBIARRA SEGURA) ---
+    # Se a tabela routes já existia sem motoboy_id, precisamos adicionar a coluna.
+    try:
+        if is_postgres:
+            cursor.execute("ALTER TABLE routes ADD COLUMN IF NOT EXISTS motoboy_id INTEGER")
+        else:
+            # SQLite não tem "IF NOT EXISTS" no ADD COLUMN, então tentamos e ignoramos erro
+            try:
+                cursor.execute("ALTER TABLE routes ADD COLUMN motoboy_id INTEGER")
+            except sqlite3.OperationalError:
+                pass # Coluna já existe
+    except Exception as e:
+        print(f"Aviso na migração: {e}")
+
     conn.commit()
     cursor.close()
     conn.close()
-    # print("Banco de dados pronto.") # Comentado para limpar output dos testes
 
 def _get_placeholder(conn):
     """Retorna o placeholder correto para o tipo de conexão."""
@@ -167,13 +182,19 @@ def get_created_routes():
         conn.close()
 
 def get_all_created_routes():
-    """Busca TODAS as rotas (para a API/Visualização), independente do status."""
+    """Busca TODAS as rotas com os dados do motoboy (JOIN)."""
     conn = get_db_connection()
     placeholder = _get_placeholder(conn)
     try:
         cursor = conn.cursor()
         try:
-            cursor.execute("SELECT * FROM routes")
+            # JOIN para pegar o nome do motoboy
+            sql_routes = """
+                SELECT r.*, m.name as motoboy_name 
+                FROM routes r
+                LEFT JOIN motoboys m ON r.motoboy_id = m.id
+            """
+            cursor.execute(sql_routes)
             routes_rows = _rows_to_dicts(cursor, cursor.fetchall())
             
             routes = []
@@ -272,5 +293,214 @@ def update_route(route_data):
             raise e
         finally:
             cursor.close()
+    finally:
+        conn.close()
+
+def create_motoboy(name):
+    """Cria um novo motoboy (Apenas nome e status)."""
+    conn = get_db_connection()
+    placeholder = _get_placeholder(conn)
+    # Removemos o 'phone' do INSERT
+    sql = f"INSERT INTO motoboys (name, status) VALUES ({placeholder}, 'available')"
+    try:
+        cursor = conn.cursor()
+        cursor.execute(sql, (name,))
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Erro ao criar motoboy: {e}")
+        return False
+    finally:
+        conn.close()
+
+def get_all_motoboys():
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM motoboys")
+        return _rows_to_dicts(cursor, cursor.fetchall())
+    finally:
+        conn.close()
+
+def assign_route_to_motoboy(route_id, motoboy_id):
+    """Vincula uma rota a um motoboy, garantindo que ele saia de outras rotas ativas."""
+    conn = get_db_connection()
+    placeholder = _get_placeholder(conn)
+    try:
+        cursor = conn.cursor()
+        
+        # 1. SEGURANÇA: Remove este motoboy de qualquer outra rota que NÃO esteja concluída.
+        # Isso impede que o "João" esteja em duas rotas ativas ao mesmo tempo.
+        sql_remove_duplicate = f"UPDATE routes SET motoboy_id = NULL WHERE motoboy_id = {placeholder} AND status != 'completed'"
+        cursor.execute(sql_remove_duplicate, (motoboy_id,))
+
+        # 2. Agora sim, atribui à nova rota
+        sql_route = f"UPDATE routes SET motoboy_id = {placeholder} WHERE id = {placeholder}"
+        cursor.execute(sql_route, (motoboy_id, route_id))
+        
+        # 3. Atualiza o status do motoboy na tabela de motoboys
+        sql_boy = f"UPDATE motoboys SET status = 'delivering' WHERE id = {placeholder}"
+        cursor.execute(sql_boy, (motoboy_id,))
+        
+        conn.commit()
+        return True
+    except Exception as e:
+        conn.rollback()
+        print(f"Erro ao atribuir rota: {e}")
+        return False
+    finally:
+        conn.close()
+
+def get_route_by_id(route_id):
+    """Busca uma rota específica pelo ID com seus pedidos."""
+    conn = get_db_connection()
+    placeholder = _get_placeholder(conn)
+    try:
+        cursor = conn.cursor()
+        # Busca a rota
+        sql_route = f"SELECT * FROM routes WHERE id = {placeholder}"
+        cursor.execute(sql_route, (route_id,))
+        row = cursor.fetchone()
+        
+        if not row:
+            return None
+            
+        route_obj = dict(row)
+        
+        # Busca os pedidos
+        sql_orders = f'''
+            SELECT o.id, o.lat, o.lon, ro.delivery_sequence 
+            FROM orders o
+            JOIN route_orders ro ON o.id = ro.order_id
+            WHERE ro.route_id = {placeholder}
+            ORDER BY ro.delivery_sequence
+        '''
+        cursor.execute(sql_orders, (route_id,))
+        orders_rows = _rows_to_dicts(cursor, cursor.fetchall())
+        
+        route_obj['orders'] = [
+            {'id': o['id'], 'sequence': o['delivery_sequence'], 'coords': {'lat': o['lat'], 'lon': o['lon']}} 
+            for o in orders_rows
+        ]
+        return route_obj
+    finally:
+        conn.close()
+
+def update_motoboy_status(motoboy_id, new_status):
+    """Atualiza apenas o status do motoboy (ex: available, delivering)."""
+    conn = get_db_connection()
+    placeholder = _get_placeholder(conn)
+    try:
+        cursor = conn.cursor()
+        sql = f"UPDATE motoboys SET status = {placeholder} WHERE id = {placeholder}"
+        cursor.execute(sql, (new_status, motoboy_id))
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Erro ao atualizar status do motoboy: {e}")
+        return False
+    finally:
+        conn.close()
+
+def remove_order_from_route(route_id, order_id, new_status='pending'):
+    """
+    Remove um pedido de uma rota.
+    new_status: 'pending' (volta pro processador) ou 'unassigned' (fica no limbo manual).
+    """
+    conn = get_db_connection()
+    placeholder = _get_placeholder(conn)
+    try:
+        cursor = conn.cursor()
+        # Deleta a associação
+        sql = f"DELETE FROM route_orders WHERE route_id = {placeholder} AND order_id = {placeholder}"
+        cursor.execute(sql, (route_id, order_id))
+        
+        # Atualiza o status do pedido
+        # Atenção: Usamos placeholder para o status também para evitar SQL Injection
+        sql_order = f"UPDATE orders SET status = {placeholder} WHERE id = {placeholder}"
+        cursor.execute(sql_order, (new_status, order_id))
+        
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Erro ao remover pedido da rota: {e}")
+        return False
+    finally:
+        conn.close()
+
+def add_order_to_route(route_id, order_id):
+    """Adiciona um pedido a uma rota existente (inicialmente no final da fila)."""
+    conn = get_db_connection()
+    placeholder = _get_placeholder(conn)
+    try:
+        cursor = conn.cursor()
+        # Descobre a última sequência
+        sql_seq = f"SELECT MAX(delivery_sequence) FROM route_orders WHERE route_id = {placeholder}"
+        cursor.execute(sql_seq, (route_id,))
+        max_seq = cursor.fetchone()[0]
+        new_seq = 1 if max_seq is None else max_seq + 1
+        
+        # Cria a associação
+        sql = f"INSERT INTO route_orders (route_id, order_id, delivery_sequence) VALUES ({placeholder}, {placeholder}, {placeholder})"
+        cursor.execute(sql, (route_id, order_id, new_seq))
+        
+        # Atualiza status do pedido
+        sql_order = f"UPDATE orders SET status = 'routed' WHERE id = {placeholder}"
+        cursor.execute(sql_order, (order_id,))
+        
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Erro ao adicionar pedido na rota: {e}")
+        return False
+    finally:
+        conn.close()
+
+def update_route_status_db(route_id, new_status):
+    """Atualiza o status da rota (ex: 'in_progress', 'completed')."""
+    conn = get_db_connection()
+    placeholder = _get_placeholder(conn)
+    try:
+        cursor = conn.cursor()
+        sql = f"UPDATE routes SET status = {placeholder} WHERE id = {placeholder}"
+        cursor.execute(sql, (new_status, route_id))
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Erro ao atualizar status da rota: {e}")
+        return False
+    finally:
+        conn.close()
+
+def unassign_route_from_motoboy(route_id):
+    """
+    Remove o motoboy da rota e define o status dela como 'created' (Pronto).
+    Também libera o motoboy (status 'available').
+    """
+    conn = get_db_connection()
+    placeholder = _get_placeholder(conn)
+    try:
+        cursor = conn.cursor()
+        
+        # 1. Descobre quem é o motoboy atual (para liberar ele)
+        cursor.execute(f"SELECT motoboy_id FROM routes WHERE id = {placeholder}", (route_id,))
+        row = cursor.fetchone()
+        motoboy_id = row[0] if row else None
+        
+        # 2. Atualiza a rota (Remove motoboy e volta para 'created')
+        sql_route = f"UPDATE routes SET motoboy_id = NULL, status = 'created' WHERE id = {placeholder}"
+        cursor.execute(sql_route, (route_id,))
+        
+        # 3. Libera o motoboy (se houver um)
+        if motoboy_id:
+            sql_boy = f"UPDATE motoboys SET status = 'available' WHERE id = {placeholder}"
+            cursor.execute(sql_boy, (motoboy_id,))
+        
+        conn.commit()
+        return True
+    except Exception as e:
+        conn.rollback()
+        print(f"Erro ao desatribuir rota: {e}")
+        return False
     finally:
         conn.close()
